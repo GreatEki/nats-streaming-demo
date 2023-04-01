@@ -15,7 +15,11 @@ stan.on("connect", () => {
     process.exit();
   });
 
-  const options = stan.subscriptionOptions().setManualAckMode(true);
+  const options = stan
+    .subscriptionOptions()
+    .setManualAckMode(true)
+    .setDeliverAllAvailable()
+    .setDurableName("my-microservice"); //this helps us to keep track and tag events that has been successfully processed
 
   const subscription = stan.subscribe(
     "ticket:created",
