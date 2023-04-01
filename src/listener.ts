@@ -12,6 +12,10 @@ stan.on("connect", () => {
   const subscription = stan.subscribe("ticket:created");
 
   subscription.on("message", (msg: Message) => {
-    console.log("Message received");
+    const data = msg.getData();
+
+    if (typeof data === "string") {
+      console.log(`Received event #${msg.getSequence()}, with data ${data}`);
+    }
   });
 });
