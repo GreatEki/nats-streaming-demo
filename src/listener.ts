@@ -15,27 +15,9 @@ stan.on("connect", () => {
     process.exit();
   });
 
-  const options = stan
-    .subscriptionOptions()
-    .setManualAckMode(true)
-    .setDeliverAllAvailable()
-    .setDurableName("my-microservice"); //this helps us to keep track and tag events that has been successfully processed
+  const ticketCreatedListener = new TicketCreatedListener(stan);
 
-  const subscription = stan.subscribe(
-    "ticket:created",
-    "ListenerQueueGroup",
-    options
-  );
-
-  subscription.on("message", (msg: Message) => {
-    const data = msg.getData();
-
-    if (typeof data === "string") {
-      console.log(`Received event #${msg.getSequence()}, with data ${data}`);
-    }
-
-    msg.ack();
-  });
+  ticketCreatedListener.listen();
 });
 
 process.on("SIGINT", () => stan.close());
@@ -58,7 +40,7 @@ abstract class Listener {
       .setDeliverAllAvailable()
       .setManualAckMode(true)
       .setAckWait(this.ackWait)
-      .setDurableName(this.QueueGroupName);
+      .setDurableName(this.QueueGroupName); //this helps us to keep track and tag events that has been successfully processed
   }
 
   listen() {
@@ -70,7 +52,9 @@ abstract class Listener {
 
     subscription.on("message", (msg: Message) => {
       console.log(
-        `Message received - Subject: ${this.subject} QueueGroup: ${this.QueueGroupName}`
+        `Message received - Event: ${msg.getSequence()}   Subject: ${
+          this.subject
+        } QueueGroup: ${this.QueueGroupName}`
       );
       const parsedData = this.parseMessage(msg);
       this.onMessage(parsedData, msg);
@@ -82,5 +66,15 @@ abstract class Listener {
     return typeof data === "string"
       ? JSON.parse(data)
       : JSON.parse(data.toString("utf8"));
+  }
+}
+
+class TicketCreatedListener extends Listener {
+  subject = "ticket:created";
+  QueueGroupName: string = "payment-service";
+  onMessage(data: any, msg: nats.Message): void {
+    console.log("Event data:", data);
+
+    msg.ack();
   }
 }
